@@ -1,7 +1,5 @@
 const UserModel = require('../models/userModel');
 const TransactionModel = require('../models/transactionModel');
-const { addTransferJob } = require('../queues/transferQueue');
-const { v4: uuidv4 } = require('uuid');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, InsufficientBalanceError, NotFoundError } = require('../utils/customErrors');
 
@@ -143,8 +141,6 @@ class TransactionController {
             throw new NotFoundError('Target user not found');
         }
 
-        const transfer_id = uuidv4();
-
         // Deduct from sender first
         await UserModel.updateBalance(user_id, amount, false);
         const balance_after = balance_before - parseFloat(amount);
@@ -160,13 +156,20 @@ class TransactionController {
             target_user_id: target_user
         });
 
-        // Add to queue for background processing (credit to receiver)
-        await addTransferJob({
-            transfer_id: transaction.transaction_id,
-            from_user_id: user_id,
-            to_user_id: target_user,
-            amount: parseFloat(amount),
-            remarks: remarks || ''
+        // Credit to receiver directly (without queue)
+        const target_balance_before = parseFloat(targetUser.balance);
+        await UserModel.updateBalance(target_user, amount, true);
+        const target_balance_after = target_balance_before + parseFloat(amount);
+
+        // Create credit transaction for receiver
+        await TransactionModel.create({
+            user_id: target_user,
+            transaction_type: 'CREDIT',
+            amount,
+            remarks: remarks || '',
+            balance_before: target_balance_before,
+            balance_after: target_balance_after,
+            target_user_id: user_id
         });
 
         res.status(200).json({

@@ -36,7 +36,7 @@ describe('MaxyAcademy REST API Tests', () => {
                     pin: '123456'
                 });
 
-            expect(response.status).toBe(400);
+            expect(response.status).toBe(409);
             expect(response.body.message).toBe('Phone Number already registered');
         });
 
@@ -63,7 +63,7 @@ describe('MaxyAcademy REST API Tests', () => {
                     pin: 'wrongpin'
                 });
 
-            expect(response.status).toBe(400);
+            expect(response.status).toBe(401);
             expect(response.body.message).toBe("Phone number and pin doesn't match.");
         });
     });
@@ -91,7 +91,7 @@ describe('MaxyAcademy REST API Tests', () => {
                 });
 
             expect(response.status).toBe(401);
-            expect(response.body.message).toBe('Unauthenticated');
+            expect(response.body.message).toBe('Access token is required');
         });
 
         test('POST /pay - should make payment successfully', async () => {
@@ -116,6 +116,51 @@ describe('MaxyAcademy REST API Tests', () => {
                 .send({
                     amount: 999999999,
                     remarks: 'Test payment'
+                });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('Balance is not enough');
+        });
+
+        test('POST /transfer - should transfer money successfully', async () => {
+            // Create target user first
+            const targetPhoneNumber = `082${Date.now().toString().slice(-8)}`;
+            const registerResponse = await request(app)
+                .post('/register')
+                .send({
+                    first_name: 'Target',
+                    last_name: 'User',
+                    phone_number: targetPhoneNumber,
+                    address: 'Jl. Test',
+                    pin: '654321'
+                });
+
+            const targetUserId = registerResponse.body.result.user_id;
+
+            // Perform transfer
+            const response = await request(app)
+                .post('/transfer')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    target_user: targetUserId,
+                    amount: 50000,
+                    remarks: 'Transfer untuk teman'
+                });
+
+            expect(response.status).toBe(200);
+            expect(response.body.status).toBe('SUCCESS');
+            expect(response.body.result.amount).toBe(50000);
+            expect(response.body.result.remarks).toBe('Transfer untuk teman');
+        });
+
+        test('POST /transfer - should fail with insufficient balance', async () => {
+            const response = await request(app)
+                .post('/transfer')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    target_user: 'any-user-id',
+                    amount: 999999999,
+                    remarks: 'Test transfer'
                 });
 
             expect(response.status).toBe(400);
@@ -160,7 +205,7 @@ describe('MaxyAcademy REST API Tests', () => {
                 });
 
             expect(response.status).toBe(401);
-            expect(response.body.message).toBe('Unauthenticated');
+            expect(response.body.message).toBe('Access token is required');
         });
     });
 
