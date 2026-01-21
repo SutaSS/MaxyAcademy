@@ -6,9 +6,10 @@ class DashboardController {
         try {
             const query = `
                 SELECT 
-                    COUNT(*) FILTER (WHERE transaction_type = 'CREDIT') as credit_count,
+                    COUNT(*) FILTER (WHERE transaction_type = 'CREDIT' AND target_user_id IS NULL) as topup_count,
+                    COUNT(*) FILTER (WHERE transaction_type = 'CREDIT' AND target_user_id IS NOT NULL) as transfer_in_count,
                     COUNT(*) FILTER (WHERE transaction_type = 'DEBIT' AND target_user_id IS NULL) as payment_count,
-                    COUNT(*) FILTER (WHERE transaction_type = 'DEBIT' AND target_user_id IS NOT NULL) as transfer_count,
+                    COUNT(*) FILTER (WHERE transaction_type = 'DEBIT' AND target_user_id IS NOT NULL) as transfer_out_count,
                     COUNT(*) as total,
                     SUM(CASE WHEN transaction_type = 'CREDIT' THEN amount ELSE 0 END) as total_credit,
                     SUM(CASE WHEN transaction_type = 'DEBIT' THEN amount ELSE 0 END) as total_debit
@@ -21,9 +22,10 @@ class DashboardController {
             res.status(200).json({
                 status: 'success',
                 data: {
-                    credit: parseInt(stats.credit_count),
+                    topup: parseInt(stats.topup_count),
+                    transfer_in: parseInt(stats.transfer_in_count),
                     payment: parseInt(stats.payment_count),
-                    transfer: parseInt(stats.transfer_count),
+                    transfer_out: parseInt(stats.transfer_out_count),
                     total: parseInt(stats.total),
                     total_credit: parseFloat(stats.total_credit || 0),
                     total_debit: parseFloat(stats.total_debit || 0)

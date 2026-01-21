@@ -231,8 +231,12 @@
         <div id="all-tab" class="tab-content active">
             <div class="stats">
                 <div class="stat-card credit">
-                    <h3>Top Up / Transfer In</h3>
-                    <div class="value" id="all-credit-count">-</div>
+                    <h3>Top Up</h3>
+                    <div class="value" id="all-topup-count">-</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>Transfer In</h3>
+                    <div class="value" id="all-transfer-in-count">-</div>
                 </div>
                 <div class="stat-card payment">
                     <h3>Payments</h3>
@@ -240,7 +244,7 @@
                 </div>
                 <div class="stat-card transfer">
                     <h3>Transfer Out</h3>
-                    <div class="value" id="all-transfer-count">-</div>
+                    <div class="value" id="all-transfer-out-count">-</div>
                 </div>
                 <div class="stat-card total">
                     <h3>Total Transactions</h3>
@@ -373,9 +377,10 @@
                 const result = await response.json();
                 
                 if (result.status === 'success') {
-                    document.getElementById('all-credit-count').textContent = result.data.credit;
+                    document.getElementById('all-topup-count').textContent = result.data.topup;
+                    document.getElementById('all-transfer-in-count').textContent = result.data.transfer_in;
                     document.getElementById('all-payment-count').textContent = result.data.payment;
-                    document.getElementById('all-transfer-count').textContent = result.data.transfer;
+                    document.getElementById('all-transfer-out-count').textContent = result.data.transfer_out;
                     document.getElementById('all-total-count').textContent = result.data.total;
                 }
             } catch (error) {
