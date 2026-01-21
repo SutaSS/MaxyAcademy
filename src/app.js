@@ -1,5 +1,6 @@
 const express = require('express');
 const routes = require('./routes');
+const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 
 const app = express();
 
@@ -16,15 +17,10 @@ app.use((req, res, next) => {
 // Routes
 app.use('/', routes);
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ message: 'Endpoint not found' });
-});
+// 404 handler - must be after all routes
+app.use(notFound);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
-    res.status(500).json({ message: 'Internal server error' });
-});
+// Global error handling middleware - must be last
+app.use(errorHandler);
 
 module.exports = app;
