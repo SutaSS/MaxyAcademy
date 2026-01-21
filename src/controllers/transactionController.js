@@ -2,6 +2,7 @@ const UserModel = require('../models/userModel');
 const TransactionModel = require('../models/transactionModel');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, InsufficientBalanceError, NotFoundError } = require('../utils/customErrors');
+const { v4: uuidv4 } = require('uuid');
 
 class TransactionController {
     static topUp = asyncHandler(async (req, res) => {
@@ -141,9 +142,17 @@ class TransactionController {
             throw new NotFoundError('Target user not found');
         }
 
+        const transfer_id = uuidv4();
+
         // Deduct from sender first
         await UserModel.updateBalance(user_id, amount, false);
         const balance_after = balance_before - parseFloat(amount);
+
+        console.log('Creating DEBIT transaction for TRANSFER (sender)...', {
+            user_id,
+            amount,
+            target_user_id: target_user
+        });
 
         // Create debit transaction for sender
         const transaction = await TransactionModel.create({
@@ -156,21 +165,26 @@ class TransactionController {
             target_user_id: target_user
         });
 
-        // Credit to receiver directly (without queue)
-        const target_balance_before = parseFloat(targetUser.balance);
-        await UserModel.updateBalance(target_user, amount, true);
-        const target_balance_after = target_balance_before + parseFloat(amount);
+        console.log('Transfer DEBIT transaction created:', transaction.transaction_id);
+        
+        // VERIFY: Query database to confirm transaction exists
+        const pool = require('../config/database');
+        const verifyQuery = await pool.query(
+            'SELECT transaction_id, transaction_type, amount FROM transactions WHERE transaction_id = $1',
+            [transaction.transaction_id]
+        );
+        console.log('DATABASE VERIFICATION - Transaction exists:', verifyQuery.rows);
 
-        // Create credit transaction for receiver
-        await TransactionModel.create({
-            user_id: target_user,
-            transaction_type: 'CREDIT',
-            amount,
-            remarks: remarks || '',
-            balance_before: target_balance_before,
-            balance_after: target_balance_after,
-            target_user_id: user_id
+        // Add to queue for BACKGROUND processing
+        await TransactionModel.addToQueue({
+            transfer_id: transfer_id,
+            from_user_id: user_id,
+            to_user_id: target_user,
+            amount: parseFloat(amount),
+            remarks: remarks || ''
         });
+
+        console.log('Transfer added to queue:', transfer_id);
 
         res.status(200).json({
             status: 'SUCCESS',

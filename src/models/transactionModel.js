@@ -10,8 +10,13 @@ class TransactionModel {
             RETURNING *
         `;
         
-        const result = await pool.query(query, [user_id, transaction_type, amount, remarks || '', balance_before, balance_after, target_user_id]);
-        return result.rows[0];
+        try {
+            const result = await pool.query(query, [user_id, transaction_type, amount, remarks || '', balance_before, balance_after, target_user_id]);
+            return result.rows[0];
+        } catch (error) {
+            console.error('ERROR inserting transaction:', error);
+            throw error;
+        }
     }
 
     static async getByUserId(user_id) {

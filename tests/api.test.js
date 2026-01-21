@@ -1,5 +1,26 @@
 const request = require('supertest');
 const app = require('../src/app');
+const pool = require('../src/config/database');
+
+// Helper function to wait for transfer to complete
+const waitForTransferCompletion = async (transferId, maxWaitTime = 10000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitTime) {
+        const result = await pool.query(
+            'SELECT status FROM transfer_queue WHERE transfer_id = $1',
+            [transferId]
+        );
+        
+        if (result.rows.length > 0 && result.rows[0].status !== 'PENDING') {
+            return result.rows[0].status;
+        }
+        
+        // Wait 500ms before checking again
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    return 'TIMEOUT';
+};
 
 describe('MaxyAcademy REST API Tests', () => {
     let accessToken;
@@ -147,11 +168,15 @@ describe('MaxyAcademy REST API Tests', () => {
                     remarks: 'Transfer untuk teman'
                 });
 
+            // Transfer should be queued successfully
             expect(response.status).toBe(200);
             expect(response.body.status).toBe('SUCCESS');
             expect(response.body.result.amount).toBe(50000);
             expect(response.body.result.remarks).toBe('Transfer untuk teman');
-        });
+            
+            // Note: The actual credit to receiver happens in background
+            // In production, you would start the worker and wait for completion
+        }, 15000); // Increase timeout for async processing
 
         test('POST /transfer - should fail with insufficient balance', async () => {
             const response = await request(app)

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxyAcademy - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: #3498db;
+            color: white;
+        }
+        
+        .tab.active {
+            background: #2c3e50;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .stat-card.pending .value { color: #f39c12; }
+        .stat-card.success .value { color: #27ae60; }
+        .stat-card.failed .value { color: #e74c3c; }
+        .stat-card.total .value { color: #3498db; }
+        .stat-card.credit .value { color: #27ae60; }
+        .stat-card.payment .value { color: #e67e22; }
+        .stat-card.transfer .value { color: #9b59b6; }
+        
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        select, button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        td {
+            font-size: 14px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge.pending { background: #fff3cd; color: #856404; }
+        .badge.success { background: #d4edda; color: #155724; }
+        .badge.failed { background: #f8d7da; color: #721c24; }
+        .badge.top-up { background: #d4edda; color: #155724; }
+        .badge.payment { background: #fff3cd; color: #856404; }
+        .badge.transfer-in { background: #d1ecf1; color: #0c5460; }
+        .badge.transfer-out { background: #e2e3e5; color: #383d41; }
+        
+        .retry-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .retry-btn:hover {
+            background: #c0392b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: auto;
+        }
+        
+        .auto-refresh input {
+            width: 15px;
+            height: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MaxyAcademy Dashboard</h1>
+            <p class="subtitle">Monitor all transactions and background queue</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('all', event)"> All Transactions</button>
+            <button class="tab" onclick="switchTab('queue', event)"> Transfer Queue</button>
+        </div>
+        
+        <!-- ALL TRANSACTIONS TAB -->
+        <div id="all-tab" class="tab-content active">
+            <div class="stats">
+                <div class="stat-card credit">
+                    <h3>Top Up / Transfer In</h3>
+                    <div class="value" id="all-credit-count">-</div>
+                </div>
+                <div class="stat-card payment">
+                    <h3>Payments</h3>
+                    <div class="value" id="all-payment-count">-</div>
+                </div>
+                <div class="stat-card transfer">
+                    <h3>Transfer Out</h3>
+                    <div class="value" id="all-transfer-count">-</div>
+                </div>
+                <div class="stat-card total">
+                    <h3>Total Transactions</h3>
+                    <div class="value" id="all-total-count">-</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <label>Filter:</label>
+                <select id="all-type-filter">
+                    <option value="">All Types</option>
+                    <option value="TOPUP">Top Up</option>
+                    <option value="PAYMENT">Payment</option>
+                    <option value="TRANSFER">Transfer</option>
+                </select>
+                <button onclick="loadAllTransactions()">Refresh</button>
+                <div class="auto-refresh">
+                    <input type="checkbox" id="all-auto-refresh" checked>
+                    <label for="all-auto-refresh">Auto-refresh (5s)</label>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Category</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Remarks</th>
+                            <th>Balance Before</th>
+                            <th>Balance After</th>
+                            <th>Target</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-transactions-table">
+                        <tr>
+                            <td colspan="10" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- TRANSFER QUEUE TAB -->
+        <div id="queue-tab" class="tab-content">
+            <div class="stats">
+                <div class="stat-card pending">
+                    <h3>Pending</h3>
+                    <div class="value" id="pending-count">-</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>Success</h3>
+                    <div class="value" id="success-count">-</div>
+                </div>
+                <div class="stat-card failed">
+                    <h3>Failed</h3>
+                    <div class="value" id="failed-count">-</div>
+                </div>
+                <div class="stat-card total">
+                    <h3>Total</h3>
+                    <div class="value" id="total-count">-</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <label>Filter:</label>
+                <select id="status-filter">
+                    <option value="">All Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="SUCCESS">Success</option>
+                    <option value="FAILED">Failed</option>
+                </select>
+                <button onclick="loadTransfers()">Refresh</button>
+                <div class="auto-refresh">
+                    <input type="checkbox" id="auto-refresh" checked>
+                    <label for="auto-refresh">Auto-refresh (5s)</label>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Transfer ID</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Retry</th>
+                            <th>Created</th>
+                            <th>Processed</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transfers-table">
+                        <tr>
+                            <td colspan="9" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function switchTab(tab, event) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+            
+            // Load data
+            if (tab === 'all') {
+                loadAllData();
+            } else {
+                loadQueueData();
+            }
+        }
+        
+        async function loadAllStats() {
+            try {
+                const response = await fetch('/dashboard/all-stats');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    document.getElementById('all-credit-count').textContent = result.data.credit;
+                    document.getElementById('all-payment-count').textContent = result.data.payment;
+                    document.getElementById('all-transfer-count').textContent = result.data.transfer;
+                    document.getElementById('all-total-count').textContent = result.data.total;
+                }
+            } catch (error) {
+                console.error('Error loading all stats:', error);
+            }
+        }
+        
+        async function loadAllTransactions() {
+            try {
+                const type = document.getElementById('all-type-filter').value;
+                const url = '/dashboard/all-transactions' + (type ? `?type=${type}` : '');
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                const tbody = document.getElementById('all-transactions-table');
+                
+                if (result.status === 'success' && result.data.length > 0) {
+                    tbody.innerHTML = result.data.map(t => `
+                        <tr>
+                            <td><code>${t.transaction_id.substring(0, 8)}...</code></td>
+                            <td><span class="badge ${t.category.toLowerCase().replace(/ /g, '-')}">${t.category}</span></td>
+                            <td>${t.user_name || 'N/A'}</td>
+                            <td>Rp ${Number(t.amount).toLocaleString()}</td>
+                            <td>${t.remarks || '-'}</td>
+                            <td>Rp ${Number(t.balance_before).toLocaleString()}</td>
+                            <td>Rp ${Number(t.balance_after).toLocaleString()}</td>
+                            <td>${t.target_user_name || '-'}</td>
+                            <td><span class="badge ${t.status.toLowerCase()}">${t.status}</span></td>
+                            <td>${new Date(t.created_date).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="10" class="loading">No transactions found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading all transactions:', error);
+                document.getElementById('all-transactions-table').innerHTML = 
+                    '<tr><td colspan="10" class="loading">Error loading data</td></tr>';
+            }
+        }
+        
+        function loadAllData() {
+            loadAllStats();
+            loadAllTransactions();
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/dashboard/stats');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    document.getElementById('pending-count').textContent = result.data.pending;
+                    document.getElementById('success-count').textContent = result.data.success;
+                    document.getElementById('failed-count').textContent = result.data.failed;
+                    document.getElementById('total-count').textContent = result.data.total;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        async function loadTransfers() {
+            try {
+                const status = document.getElementById('status-filter').value;
+                const url = '/dashboard/transfers' + (status ? `?status=${status}` : '');
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                const tbody = document.getElementById('transfers-table');
+                
+                if (result.status === 'success' && result.data.length > 0) {
+                    tbody.innerHTML = result.data.map(transfer => `
+                        <tr>
+                            <td><code>${transfer.transfer_id.substring(0, 8)}...</code></td>
+                            <td>${transfer.from_user_name || 'N/A'}</td>
+                            <td>${transfer.to_user_name || 'N/A'}</td>
+                            <td>Rp ${Number(transfer.amount).toLocaleString()}</td>
+                            <td><span class="badge ${transfer.status.toLowerCase()}">${transfer.status}</span></td>
+                            <td>${transfer.retry_count}/3</td>
+                            <td>${new Date(transfer.created_date).toLocaleString()}</td>
+                            <td>${transfer.processed_date ? new Date(transfer.processed_date).toLocaleString() : '-'}</td>
+                            <td>
+                                ${transfer.status === 'FAILED' ? 
+                                    `<button class="retry-btn" onclick="retryTransfer('${transfer.transfer_id}')">Retry</button>` : 
+                                    '-'}
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="9" class="loading">No transfers found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading transfers:', error);
+                document.getElementById('transfers-table').innerHTML = 
+                    '<tr><td colspan="9" class="loading">Error loading data</td></tr>';
+            }
+        }
+        
+        async function retryTransfer(transferId) {
+            if (!confirm('Retry this failed transfer?')) return;
+            
+            try {
+                const response = await fetch(`/dashboard/retry/${transferId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('Transfer queued for retry!');
+                    loadQueueData();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error retrying transfer: ' + error.message);
+            }
+        }
+        
+        function loadQueueData() {
+            loadStats();
+            loadTransfers();
+        }
+        
+        function loadData() {
+            // Load based on active tab
+            const activeTab = document.querySelector('.tab.active').textContent.includes('All') ? 'all' : 'queue';
+            if (activeTab === 'all') {
+                loadAllData();
+            } else {
+                loadQueueData();
+            }
+        }
+        
+        // Initial load
+        loadAllData();
+        
+        // Auto-refresh
+        setInterval(() => {
+            const activeTab = document.querySelector('.tab.active').textContent.includes('All') ? 'all' : 'queue';
+            const autoRefreshChecked = activeTab === 'all' 
+                ? document.getElementById('all-auto-refresh').checked
+                : document.getElementById('auto-refresh').checked;
+                
+            if (autoRefreshChecked) {
+                loadData();
+            }
+        }, 5000);
+        
+        // Filter changes
+        document.getElementById('all-type-filter').addEventListener('change', loadAllTransactions);
+        document.getElementById('status-filter').addEventListener('change', loadTransfers);
+    </script>
+</body>
+</html>
